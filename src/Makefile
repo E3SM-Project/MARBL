@@ -139,8 +139,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.F90
 cp_mods: $(INCS)
 
 # .mod files need to be copied to INC_DIR if OBJ_DIR != INC_DIR
-$(INC_DIR)/%.mod: $(OBJ_DIR)/%.mod
-	@$(if $(DIFF_INC), cp $< $@)
+$(INC_DIR)/%.mod: $(SRC_DIR)/%.mod
+	@$(if $(DIFF_INC), mv $< $@)
 
 # Shorthand for making dependency file
 .PHONY: depends
@@ -152,4 +152,4 @@ $(DEP_FILE): $(MAKE_DEP) $(SRC_DIR)/*.F90
 # clean up previous builds
 .PHONY: clean
 clean:
-	/bin/rm -f $(OBJ_DIR)/{gnu,intel,nag,pgi,cray}{,-mpi}/$(DEP_FILENAME) $(OBJ_DIR)/{gnu,intel,nag,pgi,cray}{,-mpi}/marbl_*.{o,mod} $(INC_DIR)/{gnu,intel,nag,pgi,cray}{,-mpi}/marbl_*.mod $(LIB_DIR)/libmarbl*.a
+	/bin/rm -f $(OBJ_DIR)/{.,gnu,intel,nag,pgi,cray}{,-mpi}/$(DEP_FILENAME) $(OBJ_DIR)/{.,gnu,intel,nag,pgi,cray}{,-mpi}/marbl_*.{o,mod} $(INC_DIR)/{.,gnu,intel,nag,pgi,cray}{,-mpi}/marbl_*.mod $(SRC_DIR)/*.mod $(LIB_DIR)/libmarbl*.a
