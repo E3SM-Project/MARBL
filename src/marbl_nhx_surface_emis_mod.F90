@@ -70,7 +70,7 @@ contains
 
     call marbl_comp_Hstar_nhx(num_elements, ph, sst, sss, Hstar_nhx)
 
-    K(:) = c1 / (c1 / kg_nh3(:) + Hstar_nhx / kw_nh3(:))
+    K(:) = c1 / (c1 / (kg_nh3(:)+1e-15_r8) + Hstar_nhx / (kw_nh3(:)+1e-15_r8))
     nhx_surface_emis(:) = (c1 - ifrac(:)) * K(:) * Hstar_nhx(:) * max(nh4(:),c0)
 
   end subroutine marbl_nhx_surface_emis_compute
@@ -156,7 +156,7 @@ contains
     ustar_div_u10(:) = sqrt(6.1e-4_r8 + 6.3e-5_r8 * u10_rms_mps(:))
     ustar(:) = ustar_div_u10(:) * u10_rms_mps(:)
     kg_nh3(:) = 1.0e-3_r8 + ustar(:) &
-         / (13.3_r8 * sqrt(schmidt_nh3(:)) + c1 / ustar_div_u10(:) - 5.0_r8 + log(schmidt_nh3(:)) / (c2 * vonkar))
+         / (13.3_r8 * sqrt(schmidt_nh3(:)) + c1 / ustar_div_u10(:) - 5.0_r8 + log(schmidt_nh3(:)+1e-15_r8) / (c2 * vonkar))
     kg_nh3(:) = cmperm * kg_nh3(:)
 
   end subroutine marbl_comp_kg_nh3
