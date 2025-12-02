@@ -294,7 +294,7 @@ contains
          tracer_local(:,:), zooplankton_local, totalChl_local)
 
     call set_surface_particulate_terms(surface_flux_forcing_indices, POC, POP, P_CaCO3, &
-         P_CaCO3_ALT_CO2, P_SiO2, dust, P_iron, QA_dust_def(:), dust_flux_in)
+         P_CaCO3_ALT_CO2, P_SiO2, dust, P_iron, QA_dust_def(:), dust_flux_in, PON_remin, PON_sed_loss)
 
     call marbl_timers%start(marbl_timer_indices%carbonate_chem_id,            &
                             marbl_status_log)
@@ -343,9 +343,17 @@ contains
          PAR, zooplankton_derived_terms, autotroph_derived_terms,   &
          delta_z1, tracer_local(:, :), dissolved_organic_matter)
 
-    do k = 1, km
+    !Initialize
+    Fe_scavenge_rate(:) = c0
+    Fe_scavenge(:) = c0
+    Lig_scavenge(:) = c0
+    sed_denitrif(:) = c0
+    other_remin(:) = c0
+    FeFree(:) = c0
 
-       call compute_scavenging(k, km, marbl_tracer_indices, tracer_local(:,:), &
+    do k = 1, kmt
+
+       call compute_scavenging(k, kmt, marbl_tracer_indices, tracer_local(:,:), &
             POC, P_CaCO3, P_SiO2, dust, Fefree(:), Fe_scavenge_rate(:), &
             Fe_scavenge(:), Lig_scavenge(:), marbl_status_log)
 
@@ -375,7 +383,7 @@ contains
           return
        end if
 
-       if  (k < km) then
+       if  (k < kmt) then
           call update_particulate_terms_from_prior_level(k+1, POC, POP, P_CaCO3, &
                P_CaCO3_ALT_CO2, P_SiO2, dust, P_iron, QA_dust_def(:))
        endif
@@ -788,7 +796,7 @@ contains
   !***********************************************************************
 
   subroutine set_surface_particulate_terms(surface_flux_forcing_indices, POC, POP, P_CaCO3, &
-       P_CaCO3_ALT_CO2, P_SiO2, dust, P_iron, QA_dust_def, NET_DUST_IN)
+       P_CaCO3_ALT_CO2, P_SiO2, dust, P_iron, QA_dust_def, NET_DUST_IN, PON_remin, PON_sed_loss)
 
     !  Set incoming fluxes (put into outgoing flux for first level usage).
     !  Set dissolution length, production fraction and mass terms.
@@ -817,6 +825,8 @@ contains
     type(column_sinking_particle_type) , intent(inout) :: dust            ! base units = g
     type(column_sinking_particle_type) , intent(inout) :: P_iron          ! base units = nmol Fe
     real (r8)                          , intent(inout) :: QA_dust_def(:)  ! incoming deficit in the QA(dust) POC flux (km)
+    real (r8), dimension(:)            , intent(inout) :: PON_remin       ! remin of PON
+    real (r8), dimension(:)            , intent(inout) :: PON_sed_loss    ! loss of PON to sediments
 
     !-----------------------------------------------------------------------
     !  local variables
@@ -868,6 +878,80 @@ contains
     !-----------------------------------------------------------------------
     !  Set incoming fluxes
     !-----------------------------------------------------------------------
+
+    ! Initialize
+    POC%sflux_in(:) = c0
+    POC%hflux_in(:) = c0
+
+    POP%sflux_in(:) = c0
+    POP%hflux_in(:) = c0
+
+    P_CaCO3%sflux_in(:) = c0
+    P_CaCO3%hflux_in(:) = c0
+
+    P_CaCO3_ALT_CO2%sflux_in(:) = c0
+    P_CaCO3_ALT_CO2%hflux_in(:) = c0
+
+    P_SiO2%sflux_in(:) = c0
+    P_SiO2%hflux_in(:) = c0
+    
+    dust%sflux_in(:) = c0
+    dust%hflux_in(:) = c0
+
+    P_iron%sflux_in(:) = c0
+    P_iron%hflux_in(:) = c0
+    
+    POC%sflux_out(:) = c0
+    POC%hflux_out(:) = c0
+
+    POP%sflux_out(:) = c0
+    POP%hflux_out(:) = c0
+
+    P_CaCO3%sflux_out(:) = c0
+    P_CaCO3%hflux_out(:) = c0
+
+    P_CaCO3_ALT_CO2%sflux_out(:) = c0
+    P_CaCO3_ALT_CO2%hflux_out(:) = c0
+
+    P_SiO2%sflux_out(:) = c0
+    P_SiO2%hflux_out(:) = c0
+    
+    dust%sflux_out(:) = c0
+    dust%hflux_out(:) = c0
+    
+    P_iron%sflux_out(:) = c0
+    P_iron%hflux_out(:) = c0
+
+    QA_dust_def(:) = c0
+    
+    ! initialize additional fields
+    
+    POC%sed_loss(:)             = c0
+    POP%sed_loss(:)             = c0
+    P_SiO2%sed_loss(:)          = c0
+    P_CaCO3%sed_loss(:)         = c0
+    P_CaCO3_ALT_CO2%sed_loss(:) = c0
+    P_iron%sed_loss(:)          = c0
+    dust%sed_loss(:)            = c0
+
+    POC%remin(:)                = c0
+    POP%remin(:)                = c0
+    P_CaCO3%remin(:)            = c0
+    P_CaCO3_ALT_CO2%remin(:)    = c0
+    P_SiO2%remin(:)             = c0
+    dust%remin(:)               = c0
+    P_iron%remin(:)             = c0
+    
+    POC%prod(:)                 = c0
+    POP%prod(:)                 = c0
+    P_CaCO3%prod(:)             = c0
+    P_CaCO3_ALT_CO2%prod(:)     = c0
+    P_SiO2%prod(:)              = c0
+    dust%prod(:)                = c0
+    P_iron%prod(:)              = c0
+     
+    PON_remin(:)                = c0
+    PON_sed_loss(:)             = c0
 
     ksurf = 1
 
@@ -2079,12 +2163,14 @@ contains
          DONr_remin      => dissolved_organic_matter%DONr_remin(:), & ! output remineralization of DONr
          DOP_prod        => dissolved_organic_matter%DOP_prod(:),   & ! output production of DOP
          DOP_remin       => dissolved_organic_matter%DOP_remin(:),  & ! output remineralization of DOP
-         DOPr_remin      => dissolved_organic_matter%DOPr_remin(:)  & ! output remineralization of DOPr
+         DOPr_remin      => dissolved_organic_matter%DOPr_remin(:), & ! output remineralization of DOPr
+         DOP_loss_P_bal  => dissolved_organic_matter%DOP_loss_P_bal(:) & ! DOP loss, due to P budget balancing 
          )
 
       !-----------------------------------------------------------------------
       !  compute terms for DOM
       !-----------------------------------------------------------------------
+      DOP_loss_P_bal(:) = c0
 
       DOC_prod(:) = sum(zoo_loss_doc(:,:), dim=1) + sum(auto_loss_doc(:,:), dim=1) &
                   + sum(auto_graze_doc(:,:), dim=1) + sum(zoo_graze_doc(:,:), dim=1)
@@ -2169,7 +2255,7 @@ contains
     type(column_sinking_particle_type), intent(in)    :: P_CaCO3
     type(column_sinking_particle_type), intent(in)    :: P_SiO2
     type(column_sinking_particle_type), intent(in)    :: dust
-    real(r8),                           intent(out)   :: Fefree(km)
+    real(r8),                           intent(inout) :: Fefree(km)
     real(r8),                           intent(out)   :: Fe_scavenge_rate(km)
     real(r8),                           intent(out)   :: Fe_scavenge(km)
     real(r8),                           intent(out)   :: Lig_scavenge(km)
@@ -2340,7 +2426,7 @@ contains
       ! scavening of FeLig2 is not implemented
       !-----------------------------------------------------------------------
 
-      sinking_mass = (POC%sflux_in(k)     + POC%hflux_in(k)    ) * (3.0_r8 * 12.01_r8) &
+      sinking_mass = (POC%sflux_in(k)     + POC%hflux_in(k)    ) * (3.0_r8 * POC%mass) &
                    + (P_CaCO3%sflux_in(k) + P_CaCO3%hflux_in(k)) * P_CaCO3%mass &
                    + (P_SiO2%sflux_in(k)  + P_SiO2%hflux_in(k) ) * P_SiO2%mass &
                    + (dust%sflux_in(k)    + dust%hflux_in(k)   ) * dust_Fe_scavenge_scale
@@ -2386,7 +2472,7 @@ contains
      type(column_sinking_particle_type),   intent(inout) :: P_SiO2
      type(column_sinking_particle_type),   intent(inout) :: dust
      type(column_sinking_particle_type),   intent(inout) :: P_iron
-     real(r8),                             intent(out)   :: DOP_loss_P_bal
+     real(r8),                             intent(inout) :: DOP_loss_P_bal
      type(marbl_log_type),                 intent(inout) :: marbl_status_log
 
      !-----------------------------------------------------------------------
@@ -2575,8 +2661,8 @@ contains
      real (r8), dimension(:)           , intent(in)    :: tracer_local        ! local copies of model tracer concentrations
      type(carbonate_type)              , intent(in)    :: carbonate
      real(r8)                          , intent(in)    :: fesedflux           ! sedimentary Fe input
-     real(r8)                          , intent(out)   :: PON_remin           ! remin of PON
-     real(r8)                          , intent(out)   :: PON_sed_loss        ! loss of PON to sediments
+     real(r8)                          , intent(inout) :: PON_remin           ! remin of PON
+     real(r8)                          , intent(inout) :: PON_sed_loss        ! loss of PON to sediments
      type(column_sinking_particle_type), intent(inout) :: POC                 ! base units = nmol C
      type(column_sinking_particle_type), intent(inout) :: POP                 ! base units = nmol P
      type(column_sinking_particle_type), intent(inout) :: P_CaCO3             ! base units = nmol CaCO3
@@ -2585,8 +2671,8 @@ contains
      type(column_sinking_particle_type), intent(inout) :: dust                ! base units = g
      type(column_sinking_particle_type), intent(inout) :: P_iron              ! base units = nmol Fe
      real (r8)                         , intent(inout) :: QA_dust_def         ! incoming deficit in the QA(dust) POC flux
-     real (r8)                         , intent(out)   :: sed_denitrif        ! sedimentary denitrification (umolN/cm^2/s)
-     real (r8)                         , intent(out)   :: other_remin         ! sedimentary remin not due to oxic or denitrification
+     real (r8)                         , intent(inout) :: sed_denitrif        ! sedimentary denitrification (umolN/cm^2/s)
+     real (r8)                         , intent(inout) :: other_remin         ! sedimentary remin not due to oxic or denitrification
      type(marbl_particulate_share_type), intent(inout) :: marbl_particulate_share
      type(marbl_tracer_index_type)     , intent(in)    :: marbl_tracer_indices
      real (r8)                         , intent(inout) :: glo_avg_fields_interior_tendency(:)
